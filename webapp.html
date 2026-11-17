@@ -110,10 +110,20 @@ function sync() {
 src.addEventListener("input", () => { out.hidden = true; sync(); });
 
 $("paste").onclick = () => {
-  const put = t => { if (t) { src.value = t; sync(); } else src.focus(); };
-  if (tg && tg.readTextFromClipboard) tg.readTextFromClipboard(put);
-  else if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(put).catch(() => src.focus());
-  else src.focus();
+  let done = false;
+  const put = t => {
+    if (done || !t) return;
+    done = true; src.value = t; out.hidden = true; sync();
+  };
+  if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(put).catch(() => {});
+  if (tg && tg.readTextFromClipboard) { try { tg.readTextFromClipboard(put); } catch (e) {} }
+  setTimeout(() => {
+    if (done) return;
+    src.focus();
+    out.hidden = false;
+    out.innerHTML = '<div class="m"></div>';
+    out.firstChild.textContent = "এই ফোনে Paste বাটন কাজ করছে না। লেখার ঘরে ট্যাপ করে ধরে রাখো, তারপর Paste চাপো।";
+  }, 700);
 };
 
 const ERR = {
