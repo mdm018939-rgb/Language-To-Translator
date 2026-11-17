@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Translator</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#fbfbff;--bar:#eef0f8;--sel:#dbe1f7;--text:#1b1c22;--sub:#5d6275;--acc:#3a55c8;--pin:#e6c9ea;--pinfg:#4a1a52;--line:#d9dcea}
+@media(prefers-color-scheme:dark){:root{--bg:#121318;--bar:#1f2026;--sel:#40465b;--text:#e4e4ea;--sub:#a8acbd;--acc:#aab7ff;--pin:#dfb8e0;--pinfg:#3b1146;--line:#2b2d38}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali",sans-serif}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+[hidden]{display:none!important}
+#main{display:flex;flex-direction:column;height:100%}
+.area{flex:1;overflow-y:auto;padding:28px 22px 12px}
+#src{width:100%;border:0;outline:0;background:none;color:var(--text);font:400 30px/1.25 inherit;font-family:inherit;resize:none;min-height:60px;overflow:hidden}
+#src::placeholder{color:var(--sub)}
+.chip{margin-top:26px;padding:14px 22px;border-radius:999px;background:var(--bar);font-weight:500}
+.go{margin:16px 0 0;padding:12px 26px;border-radius:999px;background:var(--acc);color:var(--bg);font-weight:600}
+#out{margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+#out .t{font-size:26px;line-height:1.35;white-space:pre-wrap;word-break:break-word}
+#out .m{color:var(--sub);font-size:14px;margin-top:10px}
+#out .cp{margin-top:12px;padding:8px 16px;border-radius:999px;background:var(--bar);font-size:14px}
+.bar{display:flex;align-items:center;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--bar)}
+.lang{flex:1;padding:18px 8px;border-radius:18px;background:var(--bg);font-size:17px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sw{width:44px;height:44px;border-radius:50%;font-size:22px}
+#pick{display:flex;flex-direction:column;height:100%}
+.tb{display:flex;align-items:center;gap:4px;padding:10px 8px;position:relative}
+.tb .sp{flex:1}
+.ic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center}
+.ic svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#sbox{flex:1}
+#q{width:100%;padding:10px 6px;border:0;outline:0;background:none;color:var(--text);font-size:18px}
+#list{flex:1;overflow-y:auto}
+h2{margin:6px 22px 18px;font-size:34px;font-weight:400}
+.sec{padding:18px 22px 8px;color:var(--acc);font-size:15px;font-weight:600}
+.row{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.pinbg{position:absolute;inset:0;width:50%;background:var(--pin);color:var(--pinfg);display:flex;align-items:center;padding-left:26px;font-weight:600}
+.rc{position:relative;background:var(--bg);padding:17px 22px;font-size:18px;border-radius:0 999px 999px 0;margin-right:10px}
+.rc.sel{background:var(--sel);margin:0 10px;border-radius:999px}
+#menu{position:absolute;right:10px;top:56px;z-index:5;background:var(--bar);border-radius:14px;padding:6px 0;box-shadow:0 4px 18px rgba(0,0,0,.3)}
+#menu button{display:block;width:100%;padding:12px 22px;text-align:left;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="main">
+  <div class="area">
+    <textarea id="src" rows="1" maxlength="5000" placeholder="Translate text"></textarea>
+    <button id="paste" class="chip">Paste</button>
+    <button id="go" class="go" hidden>Translate</button>
+    <div id="out" hidden></div>
+  </div>
+  <div class="bar">
+    <button id="bf" class="lang"></button>
+    <button id="sw" class="sw" aria-label="Swap languages">&#8644;</button>
+    <button id="bt" class="lang"></button>
+  </div>
+</div>
+
+<div id="pick" hidden>
+  <div class="tb">
+    <button id="back" class="ic" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+    <div id="sbox" hidden><input id="q" placeholder="Search languages" autocomplete="off"></div>
+    <div class="sp" id="spc"></div>
+    <button id="sbtn" class="ic" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+    <button id="mbtn" class="ic" aria-label="More"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg></button>
+    <div id="menu" hidden><button id="clr">Clear recent</button><button id="unp">Unpin all</button></div>
+  </div>
+  <h2 id="ptitle"></h2>
+  <div id="list"></div>
+</div>
+
+<script>
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const initData = tg ? tg.initData : "";
+const AUTO = "Detect language";
+const LANGS = ("Abkhaz,Acehnese,Acholi,Afar,Afrikaans,Albanian,Alur,Amharic,Arabic,Armenian,Assamese,Avar,Awadhi,Aymara,Azerbaijani,Balinese,Baluchi,Bambara,Baoulé,Bashkir,Basque,Batak Karo,Batak Simalungun,Batak Toba,Belarusian,Bemba,Bengali,Betawi,Bhojpuri,Bikol,Bosnian,Breton,Bulgarian,Buryat,Cantonese,Catalan,Cebuano,Chamorro,Chechen,Chichewa,Chinese (Simplified),Chinese (Traditional),Chuukese,Chuvash,Corsican,Crimean Tatar,Croatian,Czech,Danish,Dari,Dhivehi,Dinka,Dogri,Dombe,Dutch,Dyula,Dzongkha,English,Esperanto,Estonian,Ewe,Faroese,Fijian,Filipino,Finnish,Fon,French,Frisian,Friulian,Fulani,Ga,Galician,Georgian,German,Greek,Guarani,Gujarati,Haitian Creole,Hakha Chin,Hausa,Hawaiian,Hebrew,Hiligaynon,Hindi,Hmong,Hungarian,Hunsrik,Iban,Icelandic,Igbo,Ilocano,Indonesian,Irish,Italian,Jamaican Patois,Japanese,Javanese,Jingpo,Kalaallisut,Kannada,Kanuri,Kapampangan,Kazakh,Khasi,Khmer,Kiga,Kikongo,Kinyarwanda,Kituba,Kokborok,Komi,Konkani,Korean,Krio,Kurdish (Kurmanji),Kurdish (Sorani),Kyrgyz,Lao,Latgalian,Latin,Latvian,Ligurian,Limburgish,Lingala,Lithuanian,Lombard,Luganda,Luo,Luxembourgish,Macedonian,Madurese,Maithili,Makassar,Malagasy,Malay,Malay (Jawi),Malayalam,Maltese,Mam,Manx,Maori,Marathi,Marshallese,Marwadi,Mauritian Creole,Meadow Mari,Meiteilon (Manipuri),Minang,Mizo,Mongolian,Myanmar (Burmese),Nahuatl,Ndau,Ndebele (South),Nepalbhasa (Newari),Nepali,NKo,Norwegian,Nuer,Occitan,Odia (Oriya),Oromo,Ossetian,Pangasinan,Papiamento,Pashto,Persian,Polish,Portuguese (Brazil),Portuguese (Portugal),Punjabi (Gurmukhi),Punjabi (Shahmukhi),Quechua,Romani,Romanian,Rundi,Russian,Samoan,Sango,Sanskrit,Santali,Scots Gaelic,Sepedi,Serbian,Sesotho,Seychellois Creole,Shan,Shona,Sicilian,Silesian,Sindhi,Sinhala,Slovak,Slovenian,Somali,Spanish,Sundanese,Susu,Swahili,Swati,Swedish,Tahitian,Tajik,Tamazight,Tamil,Tatar,Telugu,Tetum,Thai,Tibetan,Tigrinya,Tiv,Tok Pisin,Tongan,Tsonga,Tswana,Tulu,Tumbuka,Turkish,Turkmen,Tuvan,Twi,Udmurt,Ukrainian,Urdu,Uyghur,Uzbek,Venda,Venetian,Vietnamese,Waray,Welsh,Wolof,Xhosa,Yakut,Yiddish,Yoruba,Yucatec Maya,Zapotec,Zulu").split(",").sort((a, b) => a.localeCompare(b));
+
+const S = { from: "English", to: "Bengali", pins: [], recent: [], mode: "to" };
+const $ = id => document.getElementById(id);
+const src = $("src"), out = $("out"), list = $("list");
+
+async function api(url, body) {
+  try {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ initData, ...body }) });
+    let j = {}; try { j = await r.json(); } catch (e) {}
+    return j;
+  } catch (e) { return { error: "net" }; }
+}
+
+let saveT;
+function save() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => api("/api/prefs", { save: { from: S.from, to: S.to, pins: S.pins, recent: S.recent } }), 600);
+}
+
+function paintBar() { $("bf").textContent = S.from; $("bt").textContent = S.to; }
+
+function sync() {
+  const has = src.value.trim().length > 0;
+  $("paste").hidden = has;
+  $("go").hidden = !has;
+  src.style.height = "auto";
+  src.style.height = src.scrollHeight + "px";
+}
+src.addEventListener("input", () => { out.hidden = true; sync(); });
+
+$("paste").onclick = () => {
+  const put = t => { if (t) { src.value = t; sync(); } else src.focus(); };
+  if (tg && tg.readTextFromClipboard) tg.readTextFromClipboard(put);
+  else if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(put).catch(() => src.focus());
+  else src.focus();
+};
+
+const ERR = {
+  auth: "⚠️ বটের ভেতর থেকে অ্যাপ খুলো।",
+  limit: "⚠️ আজকের ফ্রি লিমিট শেষ। বটের Settings থেকে নিজের API Key দিলে আনলিমিটেড।",
+  busy: "⏳ এই মুহূর্তে ব্যস্ত, একটু পরে আবার চেষ্টা করো।",
+  net: "⚠️ ইন্টারনেট সমস্যা, আবার চেষ্টা করো।"
+};
+
+$("go").onclick = async () => {
+  const t = src.value.trim();
+  if (!t) return;
+  $("go").disabled = true;
+  out.hidden = false;
+  out.innerHTML = '<div class="m">Translating…</div>';
+  const r = await api("/api/translate", { text: t, src: S.from === AUTO ? "" : S.from, tgt: S.to });
+  $("go").disabled = false;
+  if (r.text) {
+    out.innerHTML = '<div class="t"></div><button class="cp">Copy</button><div class="m"></div>';
+    out.querySelector(".t").textContent = r.text;
+    if (r.remaining !== undefined && r.remaining !== null && r.remaining >= 0) out.querySelector(".m").textContent = "আজ আর " + r.remaining + "টা বাকি";
+    out.querySelector(".cp").onclick = e => { navigator.clipboard && navigator.clipboard.writeText(r.text).catch(() => {}); e.target.textContent = "Copied"; };
+  } else {
+    out.innerHTML = '<div class="m"></div>';
+    out.firstChild.textContent = ERR[r.error] || ERR.busy;
+  }
+};
+
+$("sw").onclick = () => {
+  if (S.from === AUTO) return;
+  [S.from, S.to] = [S.to, S.from];
+  paintBar(); save();
+  const o = out.querySelector(".t");
+  if (o) { src.value = o.textContent; out.hidden = true; sync(); }
+};
+
+/* ---- language picker ---- */
+function openPick(mode) {
+  S.mode = mode;
+  $("ptitle").textContent = mode === "from" ? "Translate from" : "Translate to";
+  $("main").hidden = true; $("pick").hidden = false;
+  closeSearch(); $("menu").hidden = true;
+  render(); list.scrollTop = 0;
+}
+function closePick() { $("pick").hidden = true; $("main").hidden = false; }
+$("bf").onclick = () => openPick("from");
+$("bt").onclick = () => openPick("to");
+$("back").onclick = () => { if (!$("sbox").hidden) closeSearch(), render(); else closePick(); };
+
+function closeSearch() { $("sbox").hidden = true; $("spc").hidden = false; $("sbtn").hidden = false; $("q").value = ""; }
+$("sbtn").onclick = () => { $("sbox").hidden = false; $("spc").hidden = true; $("sbtn").hidden = true; $("q").focus(); };
+$("q").oninput = render;
+$("mbtn").onclick = e => { e.stopPropagation(); $("menu").hidden = !$("menu").hidden; };
+document.addEventListener("click", () => { $("menu").hidden = true; });
+$("clr").onclick = () => { S.recent = []; save(); render(); };
+$("unp").onclick = () => { S.pins = []; save(); render(); };
+
+function row(n) {
+  const pinned = S.pins.includes(n);
+  const cur = S.mode === "from" ? S.from : S.to;
+  const d = document.createElement("div");
+  d.className = "row"; d.dataset.n = n;
+  d.innerHTML = '<div class="pinbg"></div><div class="rc"></div>';
+  d.firstChild.textContent = pinned ? "📌 Unpin" : "📌 Pin";
+  const rc = d.lastChild;
+  rc.textContent = (n === cur ? "✓  " : "") + n;
+  if (n === cur) rc.classList.add("sel");
+  return d;
+}
+
+function render() {
+  const q = $("q").value.trim().toLowerCase();
+  const ok = n => !q || n.toLowerCase().includes(q);
+  list.innerHTML = "";
+  const sec = (title, arr) => {
+    arr = arr.filter(ok);
+    if (!arr.length) return;
+    const h = document.createElement("div"); h.className = "sec"; h.textContent = title; list.appendChild(h);
+    arr.forEach(n => list.appendChild(row(n)));
+  };
+  if (S.mode === "from") sec("Auto", [AUTO]);
+  sec("Pinned", S.pins);
+  sec("Recent languages", S.recent.filter(n => !S.pins.includes(n)));
+  sec("All languages", LANGS);
+  if (!list.children.length) list.innerHTML = '<div class="sec">No language found</div>';
+}
+
+function togglePin(n) {
+  const i = S.pins.indexOf(n);
+  if (i >= 0) S.pins.splice(i, 1); else S.pins.unshift(n);
+  save();
+  const y = list.scrollTop; render(); list.scrollTop = y;
+}
+
+function choose(n) {
+  const other = S.mode === "from" ? S.to : S.from;
+  if (n === other) { [S.from, S.to] = [S.to, S.from]; }
+  else if (S.mode === "from") S.from = n; else S.to = n;
+  if (n !== AUTO) S.recent = [n, ...S.recent.filter(x => x !== n)].slice(0, 5);
+  paintBar(); save(); closePick();
+}
+
+let drag = null;
+list.addEventListener("pointerdown", e => {
+  const r = e.target.closest(".row");
+  if (r) drag = { r, x: e.clientX, y: e.clientY, dx: 0, on: false };
+});
+list.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.on && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) drag.on = true;
+  if (drag.on) { drag.dx = Math.max(0, Math.min(dx, 150)); drag.r.querySelector(".rc").style.transform = "translateX(" + drag.dx + "px)"; }
+});
+list.addEventListener("pointerup", () => {
+  if (!drag) return;
+  const { r, dx, on } = drag; drag = null;
+  r.querySelector(".rc").style.transform = "";
+  if (on) { if (dx > 80) togglePin(r.dataset.n); } else choose(r.dataset.n);
+});
+list.addEventListener("pointercancel", () => {
+  if (drag) { drag.r.querySelector(".rc").style.transform = ""; drag = null; }
+});
+
+/* ---- start ---- */
+paintBar(); sync();
+api("/api/prefs", {}).then(r => {
+  const p = r.prefs || {};
+  if (p.from) S.from = p.from;
+  if (p.to) S.to = p.to;
+  if (Array.isArray(p.pins)) S.pins = p.pins;
+  if (Array.isArray(p.recent)) S.recent = p.recent;
+  paintBar();
+});
+</script>
+</body>
+</html>
